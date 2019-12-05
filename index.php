@@ -27,6 +27,7 @@ function hyperpay_init_gateway_class()
         id INT AUTO_INCREMENT,
          registration_id VARCHAR(255) NOT NULL,
          customer_id VARCHAR(255) NOT NULL,
+         mode int (10) NOT NULL,
      
          PRIMARY KEY (id)
      )  ENGINE=INNODB;";
@@ -64,6 +65,7 @@ function hyperpay_init_gateway_class()
             $this->payment_style = $this->settings['payment_style'];
             $this->mailerrors = $this->settings['mailerrors'];
             $this->lang = $this->settings['lang'];
+
             $this->tokenization= $this->settings['tokenization'];
               if(strpos($this->lang,'ar')!==false){
                 $lang='ar';
@@ -260,35 +262,78 @@ function hyperpay_init_gateway_class()
 ?>
                 <script>
                 var wpwlOptions = {
+                    
                 onReady: function(){
-                $(".wpwl-label-mobilePhone").hide();
-                $(".wpwl-wrapper-mobilePhone").hide();
-                var myFormular= "<p>Please select your preferred payment method:</p>"+
-                    "<div>"+
-                    "<input type='radio' id='mobile_method'"+
-                        "name='customParameters[SHOPPER_payment_mode]' value='mobile'>"+
-                    "<label for='contactChoice1'>Mobile Phone</label>&nbsp;&nbsp;"+
-                    "<input type='radio' id='qr_method'"+
-                        "name='customParameters[SHOPPER_payment_mode]' value='qr_code'>"+
-                    "<label for='contactChoice2'>QR code</label>"+
-                    "<br></div>";
-                $(".wpwl-group-mobilePhone").before(myFormular);
-                $( "#mobile_method" ).on("click", function() {
-                    $(".wpwl-wrapper-mobilePhone").show();
-                    $("#wpwl-noselection-error")[0].innerHTML = "";
-                });
-                $( "#qr_method" ).on("click", function() {
-                    $(".wpwl-wrapper-mobilePhone").hide();
-                    $("#wpwl-noselection-error")[0].innerHTML = "";
-                });
-                $(".wpwl-group-mobilePhone").after("<div id='wpwl-noselection-error'></div>");
-            },
-            onBeforeSubmitVirtualAccount: function(event){
-                var errorMessage = "select one of the two options.";
-                if ( !$( "#mobile_method" ).is(':checked') && !$( "#qr_method" ).is(':checked') ){
-                    var someinner = $("#wpwl-noselection-error")[0].innerHTML = errorMessage.fontcolor("red");
-                    return false;
+                <?php
+                if($this->tokenization == 'enable'){?>
+
+                    var storeMsg='Store payment details?';
+                    var style = 'style="direction: ltr"';
+                    if(wpwlOptions.locale == "ar" ){
+                                    storeMsg =' هل تريد حفظ معلومات البطاقة ؟';
+                                    style = 'style="direction: rtl"';
+                    }
+                 var createRegistrationHtml = '<div class="customLabel style ="'+style+'">'+storeMsg+'</div><div class="customInput style ="'+style+'""><input type="checkbox" name="createRegistration" value="true" /></div>';
+                $('form.wpwl-form-card').find('.wpwl-button').before(createRegistrationHtml);
+                <?php
+                    
                 }
+                ?>
+
+                   $(".wpwl-label-mobilePhone").hide();
+                    $(".wpwl-wrapper-mobilePhone").hide();
+                    if(wpwlOptions.locale == "ar" ){
+                        $(".wpwl-form-virtualAccount-STC_PAY")[0].style.direction="rtl";
+                        var myFormular= "<p>الرجاء اختيار طريقة الدفع :</p>"+
+                        "<div>"+
+                        "<input type='radio' id='mobile_method'"+
+                            "name='customParameters[SHOPPER_payment_mode]' value='mobile'>"+
+                        "<label for='contactChoice1'>رقم الهاتف</label>&nbsp;&nbsp;"+
+                        "<input type='radio' id='qr_method'"+
+                            "name='customParameters[SHOPPER_payment_mode]' value='qr_code'>"+
+                        "<label for='contactChoice2'>رمز QR</label>"+
+                        "<br></div>";
+                    }else{
+                           var myFormular= "<p>Please select your preferred payment method:</p>"+
+        "<div>"+
+        "<input type='radio' id='mobile_method'"+
+            "name='customParameters[SHOPPER_payment_mode]' value='mobile'>"+
+        "<label for='contactChoice1'>Mobile Phone</label>&nbsp;&nbsp;"+
+        "<input type='radio' id='qr_method'"+
+            "name='customParameters[SHOPPER_payment_mode]' value='qr_code'>"+
+        "<label for='contactChoice2'>QR code</label>"+
+        "<br></div>";
+    }
+            
+                 $(".wpwl-group-mobilePhone").before(myFormular);
+            $( "#mobile_method" ).on("click", function() {
+                $(".wpwl-wrapper-mobilePhone").show();
+                $("#wpwl-noselection-error")[0].innerHTML = "";
+            });
+            $( "#qr_method" ).on("click", function() {
+                $(".wpwl-wrapper-mobilePhone").hide();
+                $("#wpwl-noselection-error")[0].innerHTML = "";
+            });
+            $(".wpwl-group-mobilePhone").after("<div id='wpwl-noselection-error'></div>");
+        },
+          onBeforeSubmitVirtualAccount: function(event){
+    if(event.target.classList.contains("wpwl-form-virtualAccount-STC_PAY")){
+        if(wpwlOptions.locale == "ar" ){
+            var errorMessage = "الرجاء اختيار احد الخيارات.";
+            var errorMessagePhone = "رقم الهاتف مطلوب";
+        }else{
+            var errorMessage = "select one of the two options.";
+            var errorMessagePhone = "phone number is required.";
+        }
+        if($( "#mobile_method" ).is(':checked') && !$(".wpwl-control-mobilePhone").val()){
+            var someinner = $("#wpwl-noselection-error")[0].innerHTML = errorMessagePhone.fontcolor("red");
+            return false;
+        }
+        if ( !$( "#mobile_method" ).is(':checked') && !$( "#qr_method" ).is(':checked') ){
+            var someinner = $("#wpwl-noselection-error")[0].innerHTML = errorMessage.fontcolor("red");
+            return false;
+        }
+    }
             },
                 "style":"<?php echo $this->payment_style  ?>",
                 "locale":"<?php echo  $this->lang ?>",
@@ -338,7 +383,7 @@ function hyperpay_init_gateway_class()
                     'Authorization:Bearer '.$this->accesstoken));
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-                $resultPayment = curl_exec($ch);
+                 $resultPayment = curl_exec($ch);
                 curl_close($ch);
                 $resultJson = json_decode($resultPayment, true);
                 
@@ -387,28 +432,30 @@ function hyperpay_init_gateway_class()
                                 $customerID = $order->get_customer_id();
                                       global $wpdb;
 
-
                                      $registrationIDs = $wpdb->get_results( 
                                                                              "
                                                                          SELECT * 
                                                                      FROM wp_woocommerce_saving_cards
-                                                                         WHERE registration_id ='$registrationID'"
+                                                                         WHERE registration_id ='$registrationID'
+                                                                         and mode = '$testmode'
+                                                                         "
                                                                                                         );
-
 
                                      if (count($registrationIDs) > 0)  {
                                          # code...
                                      } else {
+                                         
                                         $wpdb->insert( 
                                                       'wp_woocommerce_saving_cards', 
                                                         array( 
                                                        'customer_id' => $customerID, 
-                                                        'registration_id' => $registrationID
+                                                        'registration_id' => $registrationID,
+                                                        'mode' => "$testmode",
                                                                              )
    
                                                                                 );
 
-                                                                                }
+                                                                            }
 
                                                                             }
 
@@ -518,7 +565,7 @@ function hyperpay_init_gateway_class()
                 $state = $city;
             }
 
-            $data = "entityId=$entityid" .
+           $data = "entityId=$entityid" .
                     "&amount=$amount" .
                     "&currency=$currency" .
                     "&paymentType=$type" .
@@ -532,20 +579,25 @@ function hyperpay_init_gateway_class()
 
             if ($this->connector_type == 'VISA_ACP') 
             {
-	            $data .="&customer.surname=$family";
+
+      	            $data .="&customer.givenName=$family";
+
+	                $data .="&customer.surname=$family";
                     $data .="&billing.street1=$street";
                     $data .="&billing.city=$city";
                     $data .="&billing.state=$state";
                     $data .="&billing.country=$country";
             }
+            
             if ($this->tokenization == 'enable' && $this->is_registered_user==true) 
             {
-               $data .=  "&createRegistration=true";
+
+               //$data .=  "&createRegistration=true";
                 global $wpdb;
                 $customerID = $order->get_customer_id();
-                $registrationIDs = $wpdb->get_results( "SELECT * FROM wp_woocommerce_saving_cards WHERE customer_id =$customerID");
-
+                $registrationIDs = $wpdb->get_results( "SELECT * FROM wp_woocommerce_saving_cards WHERE customer_id =$customerID ");
                 if($registrationIDs){
+
                     foreach( $registrationIDs as $key=>$id )
                     {
                         $data .= "&registrations[$key].id=" .$id->registration_id;
@@ -554,7 +606,7 @@ function hyperpay_init_gateway_class()
                 }
             }
 
-
+            
             $customerID = $order->get_customer_id();
 
             $ch = curl_init();
@@ -566,6 +618,7 @@ function hyperpay_init_gateway_class()
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             $response = curl_exec($ch);
+          
             if (curl_errno($ch)) {
                 wc_add_notice(__('Hyperpay error:', 'woocommerce') . "Problem with $url, $php_errormsg", 'error');
             }

@@ -504,7 +504,7 @@ function hyperpay_init_gateway_class()
                     $order->update_status('failed');
 
                     if($this->lang == 'ar'){
-                            wc_add_notice(__('(حدث خطأ في عملية الدفع يرجى المحاولة مرة أخرى) '), 'error');
+                         wc_add_notice(__('(حدث خطأ في عملية الدفع يرجى المحاولة مرة أخرى) '), 'error');
                         }else{
                         wc_add_notice(__('(Transaction Error) Error processing payment.'), 'error');
                         }
@@ -580,14 +580,18 @@ function hyperpay_init_gateway_class()
             if ($this->connector_type == 'VISA_ACP') 
             {
 
-      	            $data .="&customer.givenName=$family";
-
+		            $data.="&customer.givenName=$firstName";
 	                $data .="&customer.surname=$family";
                     $data .="&billing.street1=$street";
                     $data .="&billing.city=$city";
                     $data .="&billing.state=$state";
                     $data .="&billing.country=$country";
             }
+                    $data .="&customParameters[branch_id]=1";
+                    $data .="&customParameters[teller_id]=1";
+                    $data .="&customParameters[device_id]=1";
+                    $data .="&customParameters[bill_number]=$transactionID";  
+
             
             if ($this->tokenization == 'enable' && $this->is_registered_user==true) 
             {
